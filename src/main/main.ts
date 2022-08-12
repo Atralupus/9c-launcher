@@ -120,6 +120,22 @@ let remoteHeadless: RemoteHeadless;
 let useRemoteHeadless: boolean;
 let remoteNode: NodeInfo;
 
+const EXECUTE_PATH: {
+  [k in NodeJS.Platform]: string | null;
+} = {
+  darwin: MAC_GAME_PATH,
+  linux: path.join(app.getAppPath(), LINUX_GAME_PATH),
+  aix: null,
+  android: null,
+  freebsd: null,
+  openbsd: null,
+  sunos: null,
+  win32: WIN_GAME_PATH,
+  cygwin: WIN_GAME_PATH,
+  netbsd: null,
+};
+const executePath = EXECUTE_PATH[process.platform] || WIN_GAME_PATH;
+
 const isV2 =
   !getConfig("PreferLegacyInterface") || app.commandLine.hasSwitch("v2");
 
@@ -232,9 +248,13 @@ async function initializeApp() {
 
     const u = await checkForUpdates(standalone);
     if (u && !isV2) update(u, updateOptions);
-    else if (u && isV2)
+    else if (isV2)
       ipcMain.handle("start update", async () => {
-        await update(u, updateOptions);
+        if (u) {
+          await update(u, updateOptions);
+        } else if (!fs.existsSync(executePath)) {
+          //TODO Player Download
+        }
       });
 
     mixpanel?.track("Launcher/Start", {
@@ -339,30 +359,7 @@ function initializeIpc() {
       return;
     }
 
-    const EXECUTE_PATH: {
-      [k in NodeJS.Platform]: string | null;
-    } = {
-      darwin: MAC_GAME_PATH,
-      linux: path.join(app.getAppPath(), LINUX_GAME_PATH),
-      aix: null,
-      android: null,
-      freebsd: null,
-      openbsd: null,
-      sunos: null,
-      win32: WIN_GAME_PATH,
-      cygwin: WIN_GAME_PATH,
-      netbsd: null,
-    };
-    const executePath = EXECUTE_PATH[process.platform] || WIN_GAME_PATH
-
-    const node = utils.execute(
-      executePath,
-      info.args
-    );
-
-    if (!fs.existsSync(executePath)) {
-      //TODO Player Download
-    }
+    const node = utils.execute(executePath, info.args);
 
     node.on("close", (code) => {
       // Code 21: ERROR_NOT_READY
