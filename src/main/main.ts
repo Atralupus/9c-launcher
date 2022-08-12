@@ -340,16 +340,29 @@ function initializeIpc() {
     }
 
     const EXECUTE_PATH: {
-      [k: string]: string;
+      [k in NodeJS.Platform]: string | null;
     } = {
       darwin: MAC_GAME_PATH,
       linux: path.join(app.getAppPath(), LINUX_GAME_PATH),
+      aix: null,
+      android: null,
+      freebsd: null,
+      openbsd: null,
+      sunos: null,
+      win32: WIN_GAME_PATH,
+      cygwin: WIN_GAME_PATH,
+      netbsd: null,
     };
+    const executePath = EXECUTE_PATH[process.platform] || WIN_GAME_PATH
 
     const node = utils.execute(
-      EXECUTE_PATH[process.platform] || WIN_GAME_PATH,
+      executePath,
       info.args
     );
+
+    if (!fs.existsSync(executePath)) {
+      //TODO Player Download
+    }
 
     node.on("close", (code) => {
       // Code 21: ERROR_NOT_READY
